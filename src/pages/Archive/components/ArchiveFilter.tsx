@@ -256,6 +256,10 @@ const ArchiveDataModal = () => {
         open={selectedDataMenu === DataUploadMenuEnum.EXCEL_UPLOAD}
         setOpen={selectDataMenu}
       />
+      <ArchiveDownloadDataModal
+        open={selectedDataMenu === DataUploadMenuEnum.EXCEL_DOWNLOAD}
+        setOpen={selectDataMenu}
+      />
     </UploadDataProvider>
   );
 };
@@ -366,8 +370,6 @@ const ArchiveUploadDataModal = ({
     handleUpload(rowData, uploadOption);
   };
 
-  console.log({ rowData });
-  console.log({ file });
   return (
     <Modal
       title="Excel fayl yuklash"
@@ -497,6 +499,86 @@ const ArchiveUploadDataModal = ({
       ) : null}
     </Modal>
   );
+};
+
+const ArchiveDownloadDataModal = ({
+  open,
+  setOpen,
+}: {
+  open: boolean;
+  setOpen: Dispatch<SetStateAction<DataUploadMenuEnum | null>>;
+}) => {
+  useEffect(() => {
+    if (open) {
+      const handleKeyDown = async () => {
+        message.loading("Excel fayl yuklanmoqda...");
+        try {
+          const data = await appwriteRequests.getDocuments();
+          if (!data.success) {
+            throw new Error("Ma'lumotlarni olishda xatolik yuz berdi");
+          }
+
+          const rows = data.data.map((item) => ({
+            docSerialNumber: item.docSerialNumber,
+            docApplicationNumber: item.docApplicationNumber,
+            docLocker: item.docLocker,
+            docShelf: item.docShelf,
+            docCollection: item.docCollection,
+          }));
+
+          const columns = colDefs.map((col) => col.headerName);
+
+          const worksheet = XLSX.utils.json_to_sheet(rows);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            "Arxiv Ma'lumotlari"
+          );
+
+          /* fix headers */
+          XLSX.utils.sheet_add_aoa(worksheet, [columns], {
+            origin: "A1",
+          });
+
+          /* calculate column width */
+          const cols_max_width = rows.reduce(
+            (w, r) => {
+              columns.forEach((col, index) => {
+                const cellWidth = col.toString().length + 2; // +2 for padding
+                w[index] = { wch: Math.max(w[index]?.wch || 0, cellWidth) };
+              });
+              (
+                Object.keys(r) as unknown as (keyof ArchiveDocumentType)[]
+              ).forEach((key, index) => {
+                const cellValue = r[key] || "";
+                const cellWidth = cellValue.toString().length + 2; // +2 for padding
+                w[index] = { wch: Math.max(w[index]?.wch || 0, cellWidth) };
+              });
+              return w;
+            },
+            [] as { wch: number }[]
+          );
+          worksheet["!cols"] = cols_max_width;
+
+          const excelFileName = `arxiv_ma'lumotlari_${new Date().toISOString()}.xlsx`;
+          XLSX.writeFile(workbook, excelFileName);
+
+          message.destroy();
+          message.success("Excel fayl muvaffaqiyatli yuklandi");
+        } catch (error) {
+          message.destroy();
+          message.error(`Xatolik: ${error}`);
+        } finally {
+          setOpen(null);
+        }
+      };
+
+      handleKeyDown();
+    }
+  }, [open, setOpen]);
+
+  return null;
 };
 
 const ProgressMenu = ({ handleClose }: { handleClose: () => void }) => {

@@ -49,11 +49,10 @@ import {
   useUploadDataWriteContext,
 } from "../hooks/useUploadDataContext";
 import UploadDataProvider from "../context/uploadDataContext";
-
-enum DataUploadMenuEnum {
-  EXCEL_UPLOAD = "excel-upload",
-  EXCEL_DOWNLOAD = "excel-download",
-}
+import {
+  DataUploadMenuEnum,
+  DataUploadTypeEnum,
+} from "@/schema/data-upload.enums";
 
 const dataUploadMenu = [
   {
@@ -270,8 +269,9 @@ const ArchiveUploadDataModal = ({
 }) => {
   const table = useRef<GridApi | null>(null);
   const { handleUpload, reset } = useUploadDataWriteContext();
-  const [openUploadProcessModal, setOpenUploadProcessModal] = useState(false);
-  const [uploadOption, setUploadOption] = useState("add-excel-file");
+  const [uploadOption, setUploadOption] = useState<DataUploadTypeEnum>(
+    DataUploadTypeEnum.ADD_EXCEL_FILE
+  );
   const [selectedStep, setSelectedStep] = useState<number>(0);
   const [file, setFile] = useState<UploadFile>();
 
@@ -363,8 +363,7 @@ const ArchiveUploadDataModal = ({
   };
 
   const handleStartUpload = () => {
-    setOpenUploadProcessModal(true);
-    handleUpload(rowData);
+    handleUpload(rowData, uploadOption);
   };
 
   console.log({ rowData });
@@ -452,7 +451,7 @@ const ArchiveUploadDataModal = ({
             value={uploadOption}
             options={[
               {
-                value: "add-excel-file",
+                value: DataUploadTypeEnum.ADD_EXCEL_FILE,
                 className: "w-full border border-gray-300 !p-2 rounded",
                 label: (
                   <Flex gap="small" justify="start" align="start" vertical>
@@ -468,7 +467,7 @@ const ArchiveUploadDataModal = ({
                 ),
               },
               {
-                value: "clear-and-add-excel-file",
+                value: DataUploadTypeEnum.CLEAR_AND_ADD_EXCEL_FILE,
                 className: "w-full border border-gray-300 !p-2 rounded",
                 label: (
                   <Flex gap="small" justify="start" align="start" vertical>
@@ -493,38 +492,32 @@ const ArchiveUploadDataModal = ({
               Saqlash
             </Button>
           </Space>
-          <ProgressMenu
-            open={openUploadProcessModal}
-            setOpen={setOpenUploadProcessModal}
-            handleClose={handleCancel}
-          />
+          <ProgressMenu handleClose={handleCancel} />
         </>
       ) : null}
     </Modal>
   );
 };
 
-const ProgressMenu = ({
-  open,
-  setOpen,
-  handleClose,
-}: {
-  open: boolean;
-  setOpen: Dispatch<SetStateAction<boolean>>;
-  handleClose: () => void;
-}) => {
+const ProgressMenu = ({ handleClose }: { handleClose: () => void }) => {
   const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
   const { progressPercent, logMessage, status } = useUploadDataReadContext();
   console.log({ setOpen });
 
   useEffect(() => {
+    if (status === "active") {
+      setOpen(true);
+    }
     if (status === "success") {
       setOpen(false);
+      handleClose();
+
       setTimeout(() => {
-        handleClose();
         queryClient.invalidateQueries({
           queryKey: ["archiveData"],
         });
+        console.log("after success fetch");
       }, 200);
     }
   }, [progressPercent, logMessage, status, handleClose, queryClient, setOpen]);

@@ -348,11 +348,11 @@ const ArchiveUploadDataModal = ({
         }
         setRowData(
           dataRows.map((row) => ({
-            docSerialNumber: row[0] || "",
-            docApplicationNumber: row[1] || "",
-            docLocker: row[2] || "",
-            docShelf: row[3] || "",
-            docCollection: row[4] || "",
+            docSerialNumber: row[0].toString(),
+            docApplicationNumber: row[1].toString(),
+            docLocker: row[2].toString(),
+            docShelf: row[3].toString(),
+            docCollection: row[4].toString(),
           }))
         );
         console.log("✅ Raw data from Excel:", rawData);
